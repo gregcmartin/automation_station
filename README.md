@@ -1,5 +1,4 @@
-# n8n-nocodb Docker Setup
-
+# Automation Station :)
 This is a set of scripts for Docker that automatically sets up n8n and NocoDB with PostgreSQL and Redis backends. The setup works natively on OSX or Ubuntu and provides installation, uninstallation, and reset capabilities.
 
 ## Features
