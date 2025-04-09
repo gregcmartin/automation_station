@@ -5,7 +5,7 @@ This is a set of scripts for Docker that automatically sets up n8n and NocoDB wi
 
 - Automatic installation of latest versions from GitHub:
   - n8n (workflow automation)
-  - NocoDB (no-code database platform)
+  - NocoDB (open source airtable replacement)
   - PostgreSQL 15 (database backend)
   - Redis 7 (caching layer)
 - Automatic user account setup (user: demouser, pass: DemoUser132!)
