@@ -8,6 +8,7 @@ This is a set of scripts for Docker that automatically sets up n8n and NocoDB wi
   - NocoDB (open source airtable replacement)
   - PostgreSQL 15 (database backend)
   - Redis 7 (caching layer)
+- Optional Skyvern integration for browser automation
 - Automatic user account setup (user: demouser, pass: DemoUser132!)
 - Automatic CRM project creation in NocoDB
 - Automatic API token generation (saved to api_keys.txt)
@@ -20,6 +21,7 @@ This is a set of scripts for Docker that automatically sets up n8n and NocoDB wi
 - Docker and Docker Compose installed
 - curl (for API interactions)
 - jq (for JSON processing)
+- Git (for Skyvern integration)
 
 ## System Architecture
 
@@ -27,6 +29,7 @@ The setup includes:
 - NocoDB with PostgreSQL backend for data persistence
 - Redis for caching and improved performance
 - n8n configured with PostgreSQL backend for workflow storage
+- Optional Skyvern service for browser automation
 - All services connected via Docker network
 - Health checks for PostgreSQL and Redis
 - Service dependencies properly configured
@@ -46,11 +49,28 @@ This will:
 4. Set up the CRM project
 5. Generate and save the API token
 
+### Optional: Skyvern Integration
+
+To add Skyvern browser automation capabilities:
+
+```bash
+./setup-skyvern.sh
+```
+
+This will:
+1. Clone the Skyvern repository
+2. Set up Skyvern with MCP server enabled
+3. Configure integration with n8n and NocoDB
+4. Add browser automation capabilities to your workflows
+
+The Skyvern MCP server will be accessible at http://localhost:3000 and can be used directly in n8n workflows.
+
 ## Accessing the Services
 
 After installation:
 - NocoDB: http://localhost:8080
 - n8n: http://localhost:5678
+- Skyvern MCP (if installed): http://localhost:3000
 
 Default credentials for both services:
 - Username: demouser
@@ -93,6 +113,7 @@ The services are configured in docker-compose.yml with:
 - PostgreSQL for data persistence
 - Redis for caching
 - n8n running on port 5678
+- Skyvern (optional) running on port 3000
 - Persistent volumes for all services
 - Bridged network for service communication
 - Health checks for database services
@@ -111,6 +132,15 @@ Redis is configured with:
 - Persistent volume for data
 - Health check: redis-cli ping
 
+## Skyvern Configuration
+
+When enabled, Skyvern is configured with:
+- MCP server running on port 3000
+- Integration with n8n workflows
+- Shared credentials with n8n and NocoDB
+- Browser automation capabilities
+- Persistent volume for automation data
+
 ## Security Notes
 
 - Default credentials should be changed in production
@@ -118,3 +148,4 @@ Redis is configured with:
 - PostgreSQL password should be changed in production
 - Redis password should be changed in production
 - All sensitive data is configured through environment variables
+- Skyvern MCP server should be properly secured in production
