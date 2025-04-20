@@ -173,14 +173,24 @@ if [ "$PROJECT_ID" == "null" ] || [ -z "$PROJECT_ID" ]; then
     exit 1
 fi
 
-# Save user token to file since it has full access
-echo "$TOKEN" > api_keys.txt
+# Save API tokens to file with labels
+echo "# API Keys for n8n and NocoDB Services" > api_keys.txt
+echo "# Generated on $(date)" >> api_keys.txt
+echo "" >> api_keys.txt
+echo "NocoDB API Key:" >> api_keys.txt
+echo "$TOKEN" >> api_keys.txt
+echo "" >> api_keys.txt
+echo "n8n API Key:" >> api_keys.txt
+echo "${N8N_API_KEY}" >> api_keys.txt
 
-# Verify API token was saved
+# Verify API token file was created and has content
 if [ ! -s api_keys.txt ]; then
     echo "Error: API token file is empty"
     exit 1
 fi
+
+# Set proper permissions on API keys file
+chmod 600 api_keys.txt
 
 echo "Installation complete!"
 echo "NocoDB URL: http://localhost:8080"

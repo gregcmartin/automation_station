@@ -1,0 +1,60 @@
+services:
+  skyvern-db:
+    image: postgres:15-alpine
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_DB=skyvern
+    volumes:
+      - skyvern_db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - app_network
+
+  skyvern:
+    build: 
+      context: ./skyvern
+      dockerfile: Dockerfile
+    container_name: skyvern
+    restart: unless-stopped
+    environment:
+      - PYTHONUNBUFFERED=1
+      - MCP_SERVER_ENABLED=true
+      - MCP_SERVER_PORT=3000
+      - N8N_URL=http://n8n:5678
+      - N8N_API_KEY=${N8N_API_KEY}
+      - NOCODB_URL=http://nocodb:8080
+      - NOCODB_API_KEY=${NOCODB_API_KEY}
+      - POSTGRES_HOST=skyvern-db
+      - POSTGRES_PORT=5432
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_DB=skyvern
+      - DATABASE_URL=postgresql://postgres:${POSTGRES_PASSWORD}@skyvern-db:5432/skyvern?sslmode=disable
+    ports:
+      - "3000:3000"
+    networks:
+      - app_network
+    volumes:
+      - ./skyvern:/app
+      - skyvern_data:/data
+    depends_on:
+      skyvern-db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  skyvern_data:
+  skyvern_db_data:
+
+networks:
+  app_network:
+    external: true

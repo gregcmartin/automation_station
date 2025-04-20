@@ -1,0 +1,37 @@
+services:
+  crawl4ai:
+    build:
+      context: ./crawl4ai
+      dockerfile: Dockerfile
+      args:
+        - NODE_ENV=production
+    container_name: crawl4ai
+    restart: unless-stopped
+    ports:
+      - "3002:3002"
+    environment:
+      - PORT=3002
+      - N8N_URL=http://n8n:5678
+      - N8N_API_KEY=${N8N_API_KEY}
+      - GUNICORN_CMD_ARGS="--bind=0.0.0.0:3002 --workers=2 --access-logfile=- --error-logfile=- --timeout=30"
+    networks:
+      - app_network
+    volumes:
+      - crawl4ai-data:/data
+      - ./crawl4ai/deploy/docker/supervisord.conf:/etc/supervisor/conf.d/supervisord.conf:ro
+    command: supervisord -n -c /etc/supervisor/conf.d/supervisord.conf
+    user: root
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:3002/api/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+volumes:
+  crawl4ai-data:
+    driver: local
+
+networks:
+  app_network:
+    external: true

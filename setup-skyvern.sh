@@ -2,77 +2,7 @@
 
 echo "Setting up Skyvern integration..."
 
-# Clone Skyvern repository
-if [ ! -d "skyvern" ]; then
-    git clone https://github.com/skyvern-ai/skyvern.git
-    cd skyvern
-    # Checkout latest stable tag or commit if needed
-    # git checkout <tag/commit>
-    cd ..
-fi
-
-# Create Skyvern service configuration
-cat << 'EOF' > docker-compose.skyvern.yml
-version: '3.8'
-
-services:
-  skyvern:
-    build: 
-      context: ./skyvern
-      dockerfile: Dockerfile
-    container_name: skyvern
-    restart: unless-stopped
-    environment:
-      - PYTHONUNBUFFERED=1
-      - MCP_SERVER_ENABLED=true
-      - MCP_SERVER_PORT=3000
-      - N8N_URL=http://n8n:5678
-      - N8N_API_KEY=${N8N_API_KEY}
-      - NOCODB_URL=http://nocodb:8080
-      - NOCODB_API_KEY=${NOCODB_API_KEY}
-    ports:
-      - "3000:3000"  # MCP Server port
-    networks:
-      - app_network
-    volumes:
-      - ./skyvern:/app
-      - skyvern_data:/data
-
-volumes:
-  skyvern_data:
-
-networks:
-  app_network:
-    external: true
-    name: n8n_baserow_app_network
-EOF
-
-# Update .env file with Skyvern configuration
-if [ ! -f ".env" ]; then
-    echo "Error: .env file not found"
-    exit 1
-fi
-
-# Add Skyvern environment variables if not present
-if ! grep -q "SKYVERN_" .env; then
-    cat << 'EOF' >> .env
-
-# Skyvern Configuration
-SKYVERN_MCP_ENABLED=true
-SKYVERN_MCP_PORT=3000
-EOF
-fi
-
-# Merge Skyvern compose file with main compose file
-if ! grep -q "skyvern:" docker-compose.yml; then
-    echo "Merging Skyvern configuration with main docker-compose.yml..."
-    docker-compose -f docker-compose.yml -f docker-compose.skyvern.yml config > docker-compose.combined.yml
-    mv docker-compose.combined.yml docker-compose.yml
-fi
-
-echo "Creating MCP server configuration..."
-
-# Create MCP server configuration file
+# Create Skyvern MCP server configuration
 cat << 'EOF' > mcp-config.json
 {
   "servers": [
@@ -119,6 +49,59 @@ cat << 'EOF' > mcp-config.json
 }
 EOF
 
+echo "Creating MCP server configuration..."
+
+# Wait for PostgreSQL to be ready
+echo "Waiting for PostgreSQL to be ready..."
+until PGPASSWORD=$POSTGRES_PASSWORD psql -h localhost -U postgres -d postgres -c '\l' > /dev/null 2>&1; do
+  echo "PostgreSQL is unavailable - sleeping"
+  sleep 1
+done
+
+echo "PostgreSQL is ready"
+
+# Create Skyvern database
+echo "Creating Skyvern database..."
+PGPASSWORD=$POSTGRES_PASSWORD psql -h localhost -U postgres -d postgres -c "DROP DATABASE IF EXISTS skyvern;"
+PGPASSWORD=$POSTGRES_PASSWORD psql -h localhost -U postgres -d postgres -c "CREATE DATABASE skyvern;"
+
+# Start services
+echo "Starting Skyvern services..."
+docker-compose up -d skyvern-db skyvern
+
+# Wait for Skyvern to be ready
+echo "Waiting for Skyvern to be ready..."
+READY=0
+MAX_ATTEMPTS=60
+ATTEMPT=0
+
+while [ $READY -eq 0 ] && [ $ATTEMPT -lt $MAX_ATTEMPTS ]; do
+    echo "Checking Skyvern status (Attempt $ATTEMPT of $MAX_ATTEMPTS)..."
+    
+    # Check container status
+    SKYVERN_STATUS=$(docker-compose ps -a skyvern | grep skyvern | awk '{print $4}')
+    echo "Skyvern container status: $SKYVERN_STATUS"
+    
+    # Check container logs
+    docker-compose logs --tail=50 skyvern
+    
+    # Try health check
+    if curl -s http://localhost:3000/health > /dev/null; then
+        READY=1
+        echo "Skyvern health check passed"
+    else
+        echo "Skyvern health check failed"
+        sleep 5
+        ATTEMPT=$((ATTEMPT + 1))
+    fi
+done
+
+if [ $READY -eq 0 ]; then
+    echo "Error: Skyvern failed to become ready within timeout"
+    docker-compose logs skyvern
+    exit 1
+fi
+
 echo "Updating n8n credentials..."
 
 # Get n8n API key
@@ -137,11 +120,16 @@ curl -X POST http://localhost:5678/api/v1/credentials \
     }
   }'
 
-echo "Starting Skyvern services..."
-
-# Start services
-docker-compose up -d skyvern
+# Append Skyvern API key information to api_keys.txt
+echo "" >> api_keys.txt
+echo "Skyvern MCP Server:" >> api_keys.txt
+echo "Host: localhost" >> api_keys.txt
+echo "Port: 3000" >> api_keys.txt
+echo "Uses n8n API key for authentication" >> api_keys.txt
 
 echo "Skyvern setup complete!"
 echo "MCP Server is accessible at http://localhost:3000"
 echo "You can now use Skyvern automation in n8n workflows"
+
+# Ensure proper permissions
+chmod 600 api_keys.txt
