@@ -43,11 +43,21 @@ The setup includes:
 
 ## Installation
 
-To install n8n and NocoDB:
+The installation process will:
+1. Create a `.env` file from `.env.example` if it doesn't exist
+2. Prompt you to configure your environment variables
+3. Install and configure all services
+
+To begin installation:
 
 ```bash
 ./install.sh
 ```
+
+When running for the first time, the script will create a `.env` file from the template. You'll need to edit this file and set at minimum:
+- `POSTGRES_PASSWORD`: A secure password for the PostgreSQL database
+
+After configuring your `.env` file, run the installation script again to complete the setup.
 
 This will:
 1. Pull the latest images

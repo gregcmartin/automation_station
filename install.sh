@@ -1,5 +1,28 @@
 #!/bin/bash
 
+# Check if .env file exists, if not copy from example
+if [ ! -f .env ]; then
+    echo "No .env file found. Creating from .env.example..."
+    if [ ! -f .env.example ]; then
+        echo "Error: .env.example file not found"
+        exit 1
+    fi
+    cp .env.example .env
+    echo "Created .env file. Please edit it with your desired configuration."
+    echo "At minimum, you must set a secure POSTGRES_PASSWORD."
+    exit 1
+fi
+
+# Source the .env file
+source .env
+
+# Check if POSTGRES_PASSWORD is set
+if [ -z "$POSTGRES_PASSWORD" ]; then
+    echo "Error: POSTGRES_PASSWORD is not set in .env file"
+    echo "Please edit .env and set a secure password for PostgreSQL"
+    exit 1
+fi
+
 echo "Starting n8n and NocoDB installation..."
 
 # Pull latest images and start services
